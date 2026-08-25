@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>日文單字提醒</title>
+<meta name="theme-color" content="#c0392b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>日文單字提醒</h1>
+    <p class="subtitle">每隔一段時間，隨機學一個日文單字</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>1. 選擇難度（可複選）</h2>
+      <div class="level-grid" id="levelGrid">
+        <label class="level-chip"><input type="checkbox" value="N5" checked><span>N5<small>入門</small></span></label>
+        <label class="level-chip"><input type="checkbox" value="N4"><span>N4<small>基礎</small></span></label>
+        <label class="level-chip"><input type="checkbox" value="N3"><span>N3<small>中級</small></span></label>
+        <label class="level-chip"><input type="checkbox" value="N2"><span>N2<small>中高級</small></span></label>
+        <label class="level-chip"><input type="checkbox" value="N1"><span>N1<small>高級</small></span></label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2. 提醒間隔</h2>
+      <select id="intervalSelect">
+        <option value="15">每 15 分鐘</option>
+        <option value="30" selected>每 30 分鐘</option>
+        <option value="60">每 1 小時</option>
+        <option value="120">每 2 小時</option>
+        <option value="240">每 4 小時</option>
+        <option value="custom">自訂分鐘數…</option>
+      </select>
+      <input type="number" id="customMinutes" min="1" placeholder="輸入分鐘數" style="display:none;">
+    </section>
+
+    <section class="card">
+      <h2>3. 開始提醒</h2>
+      <div class="btn-row">
+        <button id="enableBtn" class="btn btn-primary">啟用通知提醒</button>
+        <button id="disableBtn" class="btn btn-outline" disabled>停止提醒</button>
+      </div>
+      <p class="status" id="statusText">尚未啟用提醒。</p>
+      <button id="testBtn" class="btn btn-ghost">立即測試一則通知</button>
+    </section>
+
+    <section class="card">
+      <h2>隨手抽一個單字</h2>
+      <div class="flashcard" id="flashcard">
+        <div class="fc-level" id="fcLevel">N5</div>
+        <div class="fc-kanji" id="fcKanji">日本語</div>
+        <div class="fc-reveal" id="fcReveal">
+          <div class="fc-kana" id="fcKana">にほんご</div>
+          <div class="fc-mean" id="fcMean">日文</div>
+        </div>
+        <p class="fc-hint" id="fcHint">點一下卡片顯示讀音與意思</p>
+      </div>
+      <button id="nextWordBtn" class="btn btn-outline">換下一個</button>
+    </section>
+
+    <section class="card note">
+      <h2>關於背景通知的小提醒</h2>
+      <p>
+        這是純網頁 App（PWA），沒有伺服器主動推播。當這個頁面在背景分頁保持開啟時，會依你設定的間隔準時跳通知；
+        如果手機把瀏覽器/App 完全關閉或長時間鎖屏，作業系統可能會暫停計時器。
+        建議把本頁「加到主畫面」，並不要把它從最近使用的 App 清單中滑掉，提醒會最準時。
+        每次重新打開 App 時，若已經超過設定的間隔，也會立刻補跳一則通知，盡量不漏字。
+      </p>
+    </section>
+  </main>
+
+  <script src="idb.js"></script>
+  <script src="words.js"></script>
+  <script src="word-picker.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
