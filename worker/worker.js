@@ -10,7 +10,7 @@
  *   - Var:        VAPID_PUBLIC_KEY    (base64url public key from gen_vapid.py)
  *   - Var:        VAPID_SUBJECT       e.g. "mailto:you@example.com"
  *   - Var:        ALLOWED_ORIGIN      e.g. "https://yourname.github.io"
- * Cron trigger: e.g. "*/5 * * * *" (every 5 minutes)
+ * Cron trigger: run every 5 minutes (star-slash-5 space star space star space star space star)
  */
 
 var WORD_DATA = {
