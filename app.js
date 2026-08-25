@@ -1,6 +1,6 @@
 (function () {
   // Filled in once the Cloudflare Worker is deployed (see worker/README).
-  var WORKER_URL = "WORKER_URL_PLACEHOLDER";
+  var WORKER_URL = "https://jp-word-push.jay933398.workers.dev";
   var VAPID_PUBLIC_KEY = "BM-ddryxoEkpF5Rc1nwZ8DcovK4-OgrbaI8wc3Ktcm--JDWEpq9Yqmgx31w0m7SDOvyMoiQrxA1cG9lppeX6cVw";
 
   var levelGrid = document.getElementById("levelGrid");
