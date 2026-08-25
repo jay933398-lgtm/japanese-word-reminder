@@ -1,4 +1,5 @@
-/* Service worker: offline app shell cache + background notification triggers. */
+/* Service worker: offline app shell cache + real Web Push notifications
+ * (sent by the Cloudflare Worker in worker/worker.js) + a local test path. */
 importScripts("idb.js");
 importScripts("words.js");
 importScripts("word-picker.js");
@@ -66,20 +67,37 @@ async function jpShowWordNotification() {
   });
 }
 
-// Best-effort background trigger on Android Chrome (installed PWA only).
-// The browser decides the actual interval based on engagement; it is not exact.
-self.addEventListener("periodicsync", function (event) {
-  if (event.tag === "jp-word-notification") {
-    event.waitUntil(jpShowWordNotification());
-  }
-});
-
-// Fallback for browsers without periodicsync: a page can ask the SW
-// (via postMessage) to show a notification immediately.
+// Lets the page ask for a quick local preview notification before a
+// push subscription exists yet (see the "立即測試" button in app.js).
 self.addEventListener("message", function (event) {
   if (event.data && event.data.type === "SHOW_WORD_NOW") {
     event.waitUntil(jpShowWordNotification());
   }
+});
+
+// Real background push from the Cloudflare Worker — fires even if the
+// app/tab is fully closed, as long as the subscription is still active.
+self.addEventListener("push", function (event) {
+  var data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) {}
+  var title = data.title || ("📖 " + (data.level || "") + " ・ " + (data.k || "日文單字"));
+  var body = data.body || ((data.r || "") + "\n" + (data.m || ""));
+
+  event.waitUntil((async function () {
+    var log = (await jpIdbGet("history")) || [];
+    log.unshift({ k: data.k, r: data.r, m: data.m, level: data.level, t: Date.now() });
+    await jpIdbSet("history", log.slice(0, 30));
+    await jpIdbSet("lastFireTime", Date.now());
+
+    return self.registration.showNotification(title, {
+      body: body,
+      icon: "icons/icon-192.png",
+      badge: "icons/icon-192.png",
+      tag: "jp-word",
+      renotify: true,
+      data: { url: "./index.html" }
+    });
+  })());
 });
 
 self.addEventListener("notificationclick", function (event) {

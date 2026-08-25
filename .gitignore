@@ -1,0 +1,2 @@
+worker/vapid_private.pem
+worker/vapid_private_jwk.local.txt
