@@ -1,6 +1,6 @@
 /*
- * Shared "shuffle bag" word picker so notifications cycle through every
- * word in the selected levels before any word repeats.
+ * Shared word picker: the more times a word has already appeared, the
+ * lower its chance of being picked again (weight = 1 / (count + 1)).
  * Requires words.js (WORD_DATA) and idb.js to be loaded first.
  */
 
@@ -16,26 +16,23 @@ function jpBuildPool(levels) {
   return pool;
 }
 
-function jpShuffle(arr) {
-  for (var i = arr.length - 1; i > 0; i--) {
-    var j = Math.floor(Math.random() * (i + 1));
-    var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+function jpWeightedPick(pool, counts) {
+  var weights = pool.map(function (w) { return 1 / ((counts[w.id] || 0) + 1); });
+  var total = weights.reduce(function (a, b) { return a + b; }, 0);
+  var r = Math.random() * total;
+  for (var i = 0; i < pool.length; i++) {
+    r -= weights[i];
+    if (r < 0) return pool[i];
   }
-  return arr;
+  return pool[pool.length - 1];
 }
 
 async function jpPickNextWord(levels) {
   var pool = jpBuildPool(levels);
   if (pool.length === 0) return null;
-  var key = levels.slice().sort().join(",");
-  var state = (await jpIdbGet("bagState")) || {};
-  var bag = state[key];
-  if (!bag || bag.length === 0) {
-    bag = jpShuffle(pool.map(function (w) { return w.id; }));
-  }
-  var id = bag.pop();
-  state[key] = bag;
-  await jpIdbSet("bagState", state);
-  var word = pool.filter(function (w) { return w.id === id; })[0];
-  return word || pool[0];
+  var counts = (await jpIdbGet("wordCounts")) || {};
+  var word = jpWeightedPick(pool, counts);
+  counts[word.id] = (counts[word.id] || 0) + 1;
+  await jpIdbSet("wordCounts", counts);
+  return word;
 }

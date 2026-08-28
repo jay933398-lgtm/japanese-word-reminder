@@ -127,7 +127,9 @@ async function idFromEndpoint(endpoint) {
   }).join("");
 }
 
-// ---------- word picking (shuffle bag, mirrors word-picker.js) ----------
+// ---------- word picking (frequency-weighted, mirrors word-picker.js) ----------
+// The more times a word has already appeared for this subscriber, the
+// lower its chance of being picked again (weight = 1 / (count + 1)).
 
 function buildPool(levels) {
   var pool = [];
@@ -141,26 +143,24 @@ function buildPool(levels) {
   return pool;
 }
 
-function shuffle(arr) {
-  for (var i = arr.length - 1; i > 0; i--) {
-    var j = Math.floor(Math.random() * (i + 1));
-    var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+function weightedPick(pool, counts) {
+  var weights = pool.map(function (w) { return 1 / ((counts[w.id] || 0) + 1); });
+  var total = weights.reduce(function (a, b) { return a + b; }, 0);
+  var r = Math.random() * total;
+  for (var i = 0; i < pool.length; i++) {
+    r -= weights[i];
+    if (r < 0) return pool[i];
   }
-  return arr;
+  return pool[pool.length - 1];
 }
 
-function pickWord(levels, bagStateAll) {
+function pickWord(levels, countsAll) {
   var pool = buildPool(levels);
-  if (pool.length === 0) return { word: null, bagState: bagStateAll };
-  var key = levels.slice().sort().join(",");
-  var bag = bagStateAll[key];
-  if (!bag || bag.length === 0) bag = shuffle(pool.map(function (w) { return w.id; }));
-  else bag = bag.slice();
-  var id = bag.pop();
-  var newState = Object.assign({}, bagStateAll);
-  newState[key] = bag;
-  var word = pool.filter(function (w) { return w.id === id; })[0] || pool[0];
-  return { word: word, bagState: newState };
+  if (pool.length === 0) return { word: null, counts: countsAll };
+  var counts = Object.assign({}, countsAll);
+  var word = weightedPick(pool, counts);
+  counts[word.id] = (counts[word.id] || 0) + 1;
+  return { word: word, counts: counts };
 }
 
 // ---------- Web Push (RFC 8291 aes128gcm + RFC 8292 VAPID) ----------
@@ -284,7 +284,7 @@ async function handleFetch(request, env) {
       levels: (body.levels && body.levels.length) ? body.levels : ["N5"],
       intervalMinutes: body.intervalMinutes || 30,
       lastSent: Date.now(),
-      bagState: existing.bagState || {}
+      wordCounts: existing.wordCounts || {}
     };
     await env.SUBS.put(id, JSON.stringify(record));
     return jsonResponse({ ok: true, id: id }, cors);
@@ -306,7 +306,7 @@ async function handleFetch(request, env) {
     if (!raw) return jsonResponse({ ok: false, error: "not subscribed" }, cors, 404);
     var record = JSON.parse(raw);
     var levels = (record.levels && record.levels.length) ? record.levels : ["N5"];
-    var picked = pickWord(levels, record.bagState || {});
+    var picked = pickWord(levels, record.wordCounts || {});
     if (!picked.word) return jsonResponse({ ok: false, error: "no words for level" }, cors, 400);
     var res;
     try {
@@ -319,7 +319,7 @@ async function handleFetch(request, env) {
       return jsonResponse({ ok: false, error: "push service " + res.status + ": " + text }, cors, 502);
     }
     record.lastSent = Date.now();
-    record.bagState = picked.bagState;
+    record.wordCounts = picked.counts;
     await env.SUBS.put(tid, JSON.stringify(record));
     return jsonResponse({ ok: true, word: picked.word }, cors);
   }
@@ -343,7 +343,7 @@ async function handleScheduled(env) {
       if (record.lastSent && (now - record.lastSent) < intervalMs) continue;
 
       var levels = (record.levels && record.levels.length) ? record.levels : ["N5"];
-      var picked = pickWord(levels, record.bagState || {});
+      var picked = pickWord(levels, record.wordCounts || {});
       if (!picked.word) continue;
 
       try {
@@ -358,7 +358,7 @@ async function handleScheduled(env) {
       }
 
       record.lastSent = now;
-      record.bagState = picked.bagState;
+      record.wordCounts = picked.counts;
       await env.SUBS.put(key, JSON.stringify(record));
     }
     cursor = page.cursor;
